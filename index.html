@@ -1,0 +1,2661 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+<!-- This site is hosted on Netlify. Anyone can build and deploy a site
+     like this one for free: https://netlify.new/?utm_campaign=loops&utm_source=ai-legible&utm_medium=owned&utm_content=comment&utm_id=69d99498-92e1-4bec-b777-62bf03f8dbed
+     Netlify hosting facts for this site: static/SSR served via Netlify Edge. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>R.MEDINA // SISTEMA DE DIAGNÓSTICO // JAVA DEV</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Montserrat:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="riki.png">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --green: #00ff41;
+            --green-dim: #00aa2a;
+            --green-dark: #004d14;
+            --amber: #ffb000;
+            --amber-dim: #cc8c00;
+            --red: #ff0040;
+            --red-dim: #990026;
+            --cyan: #00e5ff;
+            --bg: #0a0a0a;
+            --bg-2: #050505;
+            --panel: rgba(10, 20, 10, 0.85);
+            --border: rgba(0, 255, 65, 0.3);
+            --text: #c8ffc8;
+            --text-dim: #6a8a6a;
+            --glow: 0 0 10px rgba(0, 255, 65, 0.5), 0 0 20px rgba(0, 255, 65, 0.3);
+            --glow-amber: 0 0 10px rgba(255, 176, 0, 0.5), 0 0 20px rgba(255, 176, 0, 0.3);
+        }
+
+        html, body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Share Tech Mono', monospace;
+            overflow-x: hidden;
+            min-height: 100vh;
+            cursor: crosshair;
+        }
+
+        /* ===== BOOT SEQUENCE ===== */
+        #boot-screen {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: #000;
+            z-index: 99999;
+            padding: 40px;
+            font-family: 'VT323', monospace;
+            font-size: 1.2rem;
+            color: var(--green);
+            overflow: hidden;
+            transition: opacity 0.8s ease;
+        }
+
+        #boot-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .boot-line {
+            opacity: 0;
+            animation: bootFade 0.3s forwards;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        @keyframes bootFade {
+            to { opacity: 1; }
+        }
+
+        .boot-line.ok { color: var(--green); }
+        .boot-line.warn { color: var(--amber); }
+        .boot-line.critical { color: var(--red); }
+
+        .boot-cursor {
+            display: inline-block;
+            width: 10px;
+            height: 18px;
+            background: var(--green);
+            animation: blink 0.8s infinite;
+            vertical-align: middle;
+            margin-left: 4px;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        /* ===== GRID ISOMÉTRICO 3D ===== */
+        .iso-grid {
+            position: fixed;
+            bottom: 0; left: 50%;
+            width: 200vw; height: 50vh;
+            transform: translateX(-50%) perspective(500px) rotateX(60deg);
+            background-image: 
+                linear-gradient(var(--green-dark) 1px, transparent 1px),
+                linear-gradient(90deg, var(--green-dark) 1px, transparent 1px);
+            background-size: 50px 50px;
+            opacity: 0.3;
+            z-index: -2;
+            animation: gridScroll 20s linear infinite;
+            mask-image: linear-gradient(to top, rgba(0,0,0,1) 0%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,1) 0%, transparent 100%);
+        }
+
+        @keyframes gridScroll {
+            from { background-position: 0 0; }
+            to { background-position: 0 50px; }
+        }
+
+        /* ===== DATA STREAMS LATERALES ===== */
+        .data-stream {
+            position: fixed;
+            top: 0;
+            width: 20px;
+            height: 100vh;
+            font-family: 'VT323', monospace;
+            font-size: 14px;
+            color: var(--green-dim);
+            opacity: 0.4;
+            z-index: 1;
+            overflow: hidden;
+            pointer-events: none;
+            line-height: 1.2;
+        }
+
+        .data-stream.left { left: 8px; }
+        .data-stream.right { right: 8px; }
+
+        .data-stream-inner {
+            animation: streamFlow 30s linear infinite;
+        }
+
+        @keyframes streamFlow {
+            from { transform: translateY(0); }
+            to { transform: translateY(-50%); }
+        }
+
+        /* ===== SCANLINES + CRT ===== */
+        .scanlines {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            pointer-events: none;
+            z-index: 9998;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.15) 0px,
+                rgba(0, 0, 0, 0.15) 1px,
+                transparent 1px,
+                transparent 3px
+            );
+            mix-blend-mode: multiply;
+        }
+
+        .vignette {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            pointer-events: none;
+            z-index: 9997;
+            background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%);
+        }
+
+        .chromatic {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            pointer-events: none;
+            z-index: 9996;
+            opacity: 0.03;
+            background: 
+                linear-gradient(90deg, rgba(255,0,0,0.5) 0%, transparent 33%, rgba(0,255,0,0.5) 66%, rgba(0,0,255,0.5) 100%);
+            animation: chromaticShift 8s infinite;
+        }
+
+        @keyframes chromaticShift {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(2px); }
+        }
+
+        /* ===== CONTENEDOR PRINCIPAL ===== */
+        .main-container {
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 30px 40px;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 30px;
+            margin-bottom: 25px;
+            position: relative;
+            box-shadow: var(--glow), inset 0 0 30px rgba(0, 255, 65, 0.05);
+        }
+
+        .header::before {
+            content: '◆ SYSTEM PROFILE // CLASSIFIED';
+            position: absolute;
+            top: -10px; left: 20px;
+            background: var(--bg);
+            padding: 0 10px;
+            color: var(--amber);
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+        }
+
+        .header-grid {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 30px;
+            align-items: center;
+        }
+
+        /* ========================================= */
+        /* ===== OPERATOR DOSSIER - FOTO HUD ======= */
+        /* ========================================= */
+        .operator-dossier {
+            position: relative;
+            width: 260px;
+            height: 320px;
+            padding: 15px;
+            background: linear-gradient(135deg, rgba(0, 20, 0, 0.9), rgba(10, 10, 10, 0.9));
+            border: 1px solid var(--green-dim);
+            clip-path: polygon(
+                0 15px, 15px 0, 
+                calc(100% - 15px) 0, 100% 15px, 
+                100% calc(100% - 15px), calc(100% - 15px) 100%, 
+                15px 100%, 0 calc(100% - 15px)
+            );
+            box-shadow: var(--glow), inset 0 0 40px rgba(0, 255, 65, 0.1);
+        }
+
+        /* Esquinas tipo brackets */
+        .dossier-corner {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--green);
+            z-index: 5;
+            filter: drop-shadow(0 0 4px var(--green));
+        }
+        .dossier-corner.tl { top: 5px; left: 5px; border-right: none; border-bottom: none; }
+        .dossier-corner.tr { top: 5px; right: 5px; border-left: none; border-bottom: none; }
+        .dossier-corner.bl { bottom: 5px; left: 5px; border-right: none; border-top: none; }
+        .dossier-corner.br { bottom: 5px; right: 5px; border-left: none; border-top: none; }
+
+        /* Header del dossier */
+        .dossier-header {
+            position: absolute;
+            top: -1px; left: 30px; right: 30px;
+            background: var(--green);
+            color: var(--bg);
+            text-align: center;
+            padding: 3px 0;
+            font-size: 0.65rem;
+            font-weight: bold;
+            letter-spacing: 3px;
+            z-index: 4;
+        }
+
+        /* Footer del dossier */
+        .dossier-footer {
+            position: absolute;
+            bottom: -1px; left: 30px; right: 30px;
+            background: var(--amber);
+            color: var(--bg);
+            text-align: center;
+            padding: 3px 0;
+            font-size: 0.6rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            z-index: 4;
+        }
+
+        /* Contenedor de la foto */
+        .dossier-photo-wrap {
+            position: relative;
+            width: 100%;
+            height: 220px;
+            margin-top: 15px;
+            overflow: hidden;
+            border: 1px solid var(--green-dim);
+            background: #000;
+        }
+
+        .dossier-photo-wrap::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent 0px,
+                transparent 2px,
+                rgba(0, 255, 65, 0.08) 2px,
+                rgba(0, 255, 65, 0.08) 3px
+            );
+            z-index: 3;
+            pointer-events: none;
+        }
+
+        /* Scanline que recorre la foto */
+        .dossier-photo-wrap::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                var(--green) 20%, 
+                var(--amber) 50%, 
+                var(--green) 80%, 
+                transparent 100%);
+            box-shadow: 0 0 15px var(--green), 0 0 30px var(--green);
+            z-index: 4;
+            animation: dossierScan 3s linear infinite;
+            opacity: 0.9;
+        }
+
+        @keyframes dossierScan {
+            0% { top: -3px; opacity: 0; }
+            10% { opacity: 0.9; }
+            90% { opacity: 0.9; }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        .dossier-photo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: contrast(1.1) saturate(0.85) brightness(0.95);
+            transition: filter 0.4s;
+            animation: photoGlitch 8s infinite;
+        }
+
+        .dossier-photo-wrap:hover .dossier-photo {
+            filter: contrast(1.2) saturate(1) brightness(1.05);
+        }
+
+        @keyframes photoGlitch {
+            0%, 92%, 100% { 
+                filter: contrast(1.1) saturate(0.85) brightness(0.95);
+                transform: translate(0, 0);
+            }
+            93% { 
+                filter: contrast(1.3) saturate(0.5) brightness(1.1) hue-rotate(10deg);
+                transform: translate(-2px, 0);
+            }
+            94% { 
+                filter: contrast(1.3) saturate(0.5) brightness(1.1) hue-rotate(-10deg);
+                transform: translate(2px, 0);
+            }
+            95% { 
+                filter: contrast(1.1) saturate(0.85) brightness(0.95);
+                transform: translate(0, 0);
+            }
+        }
+
+        /* Crosshairs sobre la foto */
+        .dossier-crosshair {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px; height: 60px;
+            z-index: 5;
+            pointer-events: none;
+            opacity: 0.5;
+        }
+
+        .dossier-crosshair::before,
+        .dossier-crosshair::after {
+            content: '';
+            position: absolute;
+            background: var(--green);
+            box-shadow: 0 0 4px var(--green);
+        }
+
+        .dossier-crosshair::before {
+            top: 50%; left: 0;
+            width: 100%; height: 1px;
+            transform: translateY(-50%);
+        }
+
+        .dossier-crosshair::after {
+            left: 50%; top: 0;
+            width: 1px; height: 100%;
+            transform: translateX(-50%);
+        }
+
+        .dossier-crosshair-circle {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 30px; height: 30px;
+            border: 1px solid var(--green);
+            border-radius: 50%;
+            box-shadow: 0 0 4px var(--green);
+            z-index: 5;
+            pointer-events: none;
+            opacity: 0.5;
+        }
+
+        /* Texto lateral rotado */
+        .dossier-side-text {
+            position: absolute;
+            font-family: 'VT323', monospace;
+            font-size: 0.7rem;
+            color: var(--amber);
+            letter-spacing: 2px;
+            z-index: 4;
+        }
+
+        .dossier-side-text.left {
+            top: 50%; left: -2px;
+            transform: rotate(-90deg) translateX(-50%);
+            transform-origin: left center;
+        }
+
+        .dossier-side-text.right {
+            top: 50%; right: -2px;
+            transform: rotate(90deg) translateX(50%);
+            transform-origin: right center;
+        }
+
+        /* Datos biométricos debajo de la foto */
+        .dossier-bio {
+            margin-top: 10px;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid var(--green-dark);
+            font-family: 'VT323', monospace;
+            font-size: 0.85rem;
+            color: var(--green);
+        }
+
+        .dossier-bio-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+        }
+
+        .dossier-bio-row .label {
+            color: var(--amber);
+        }
+
+        .dossier-bio-row .value {
+            color: var(--green);
+            font-weight: bold;
+        }
+
+        /* Barcode decorativo */
+        .dossier-barcode {
+            margin-top: 6px;
+            height: 18px;
+            display: flex;
+            gap: 1px;
+            align-items: stretch;
+        }
+
+        .dossier-barcode span {
+            flex: 1;
+            background: var(--green);
+            opacity: 0.7;
+        }
+
+        .dossier-barcode span:nth-child(odd) { flex: 2; }
+        .dossier-barcode span:nth-child(3n) { flex: 3; background: var(--amber); }
+        .dossier-barcode span:nth-child(5n) { flex: 1; }
+
+        /* LEDs indicadores */
+        .dossier-leds {
+            position: absolute;
+            top: 25px; right: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            z-index: 4;
+        }
+
+        .dossier-led {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 4px var(--green);
+            animation: ledBlink 1.5s infinite;
+        }
+
+        .dossier-led.amber { background: var(--amber); box-shadow: 0 0 4px var(--amber); animation-delay: 0.3s; }
+        .dossier-led.red { background: var(--red); box-shadow: 0 0 4px var(--red); animation-delay: 0.6s; }
+
+        @keyframes ledBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Status badge */
+        .dossier-status {
+            position: absolute;
+            bottom: 25px; left: 8px;
+            background: var(--green);
+            color: var(--bg);
+            padding: 2px 8px;
+            font-size: 0.6rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            z-index: 4;
+            animation: statusPulse 2s infinite;
+        }
+
+        @keyframes statusPulse {
+            0%, 100% { box-shadow: 0 0 5px var(--green); }
+            50% { box-shadow: 0 0 15px var(--green); }
+        }
+
+        /* Efecto de "target lock" al hover */
+        .operator-dossier:hover .dossier-crosshair,
+        .operator-dossier:hover .dossier-crosshair-circle {
+            opacity: 1;
+            animation: targetLock 0.5s ease;
+        }
+
+        @keyframes targetLock {
+            0% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+
+        .operator-dossier:hover {
+            box-shadow: 0 0 20px var(--green), 0 0 40px rgba(0, 255, 65, 0.4), inset 0 0 40px rgba(0, 255, 65, 0.15);
+        }
+
+        /* ========================================= */
+        /* ===== FIN OPERATOR DOSSIER ============== */
+        /* ========================================= */
+
+        /* PROFILE INFO */
+        .profile-info {
+            min-width: 0;
+        }
+
+        .profile-label {
+            color: var(--amber);
+            font-size: 0.8rem;
+            letter-spacing: 3px;
+            margin-bottom: 8px;
+        }
+
+        .profile-name {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.8rem;
+            font-weight: 900;
+            color: var(--green);
+            text-shadow: var(--glow);
+            letter-spacing: 4px;
+            margin-bottom: 15px;
+            min-height: 3.5rem;
+        }
+
+        .typing-cursor {
+            display: inline-block;
+            width: 3px;
+            height: 2.5rem;
+            background: var(--green);
+            vertical-align: middle;
+            margin-left: 4px;
+            animation: blink 0.8s infinite;
+        }
+
+        .profile-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .profile-tag {
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px solid var(--border);
+            padding: 6px 14px;
+            font-size: 0.85rem;
+            color: var(--green);
+            letter-spacing: 1px;
+            position: relative;
+        }
+
+        .profile-tag::before {
+            content: '▸';
+            margin-right: 6px;
+            color: var(--amber);
+        }
+
+        /* PROGRESS BAR INDUSTRIAL */
+        .progress-industrial {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border);
+            padding: 15px;
+            margin-top: 10px;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            color: var(--amber);
+            letter-spacing: 1px;
+        }
+
+        .progress-bar {
+            height: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid var(--green-dim);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 62.5%;
+            background: repeating-linear-gradient(
+                45deg,
+                var(--green) 0px,
+                var(--green) 8px,
+                var(--green-dim) 8px,
+                var(--green-dim) 16px
+            );
+            position: relative;
+            animation: progressPulse 2s infinite;
+        }
+
+        @keyframes progressPulse {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.3); }
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0; right: 0;
+            width: 4px; height: 100%;
+            background: var(--amber);
+            box-shadow: 0 0 10px var(--amber);
+            animation: progressBlink 1s infinite;
+        }
+
+        @keyframes progressBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* STATUS PANEL */
+        .status-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-width: 200px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border);
+            font-size: 0.85rem;
+        }
+
+        .led {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 8px var(--green);
+            animation: ledBlink 1.5s infinite;
+        }
+
+        .led.amber { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+        .led.red { background: var(--red); box-shadow: 0 0 8px var(--red); }
+
+        .status-label {
+            color: var(--text-dim);
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+        }
+
+        .status-value {
+            color: var(--green);
+            font-weight: bold;
+        }
+
+        /* ===== TABS ===== */
+        .tabs-nav {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 20px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            padding: 8px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text-dim);
+            padding: 14px 20px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.95rem;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            text-transform: uppercase;
+        }
+
+        .tab-btn::before {
+            content: '[ ';
+            color: var(--amber);
+        }
+
+        .tab-btn::after {
+            content: ' ]';
+            color: var(--amber);
+        }
+
+        .tab-btn:hover {
+            color: var(--green);
+            background: rgba(0, 255, 65, 0.05);
+        }
+
+        .tab-btn.active {
+            color: var(--green);
+            background: rgba(0, 255, 65, 0.1);
+            border-color: var(--green);
+            text-shadow: var(--glow);
+        }
+
+        /* ===== TABS CONTENT ===== */
+        .tabs-content {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            padding: 30px;
+            min-height: 600px;
+            position: relative;
+        }
+
+        .tabs-content::before {
+            content: '◆ ACTIVE MODULE';
+            position: absolute;
+            top: -10px; left: 20px;
+            background: var(--bg);
+            padding: 0 10px;
+            color: var(--amber);
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+        }
+
+        .tab-pane {
+            display: none;
+            animation: tabFade 0.5s ease;
+        }
+
+        .tab-pane.active { display: block; }
+
+        @keyframes tabFade {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ===== SKILLS GRID ===== */
+        .skills-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .skill-card {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border);
+            padding: 20px;
+            position: relative;
+            transition: all 0.3s;
+            cursor: pointer;
+            overflow: hidden;
+        }
+
+        .skill-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--green), transparent);
+            transition: left 0.6s;
+        }
+
+        .skill-card:hover {
+            border-color: var(--green);
+            box-shadow: var(--glow);
+            transform: translateY(-3px);
+        }
+
+        .skill-card:hover::before { left: 100%; }
+
+        .skill-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .skill-icon-box {
+            width: 50px; height: 50px;
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px solid var(--green);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: var(--green);
+            text-shadow: var(--glow);
+        }
+
+        .skill-title { flex: 1; }
+
+        .skill-title h3 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            color: var(--green);
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .skill-title .level {
+            color: var(--amber);
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+        }
+
+        .skill-gauge {
+            position: relative;
+            width: 60px; height: 60px;
+        }
+
+        .skill-gauge svg { transform: rotate(-90deg); }
+
+        .skill-gauge circle {
+            fill: none;
+            stroke-width: 4;
+        }
+
+        .skill-gauge .bg { stroke: rgba(0, 255, 65, 0.15); }
+        .skill-gauge .fg { 
+            stroke: var(--green);
+            stroke-linecap: square;
+            filter: drop-shadow(0 0 3px var(--green));
+        }
+
+        .skill-gauge .value {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+            color: var(--green);
+            font-weight: bold;
+        }
+
+        .skill-desc {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+
+        .skill-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .skill-tag {
+            background: rgba(255, 176, 0, 0.1);
+            border: 1px solid rgba(255, 176, 0, 0.3);
+            color: var(--amber);
+            padding: 3px 10px;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+        }
+
+        /* SOFT SKILLS */
+        .soft-skills { margin-top: 30px; }
+
+        .section-title {
+            color: var(--amber);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            letter-spacing: 3px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px dashed var(--amber-dim);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title::before {
+            content: '▶';
+            color: var(--green);
+        }
+
+        .soft-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .soft-item {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border);
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .soft-item:hover {
+            border-color: var(--amber);
+            transform: translateX(5px);
+        }
+
+        .soft-icon {
+            width: 40px; height: 40px;
+            background: rgba(255, 176, 0, 0.1);
+            border: 1px solid var(--amber);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--amber);
+            font-size: 1.2rem;
+        }
+
+        .soft-content h4 {
+            color: var(--green);
+            font-size: 0.95rem;
+            margin-bottom: 4px;
+            letter-spacing: 1px;
+        }
+
+        .soft-content p {
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+
+        /* ===== CERTIFICACIONES ===== */
+        .cert-list {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .cert-card {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border);
+            padding: 25px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .cert-card:hover {
+            border-color: var(--green);
+            box-shadow: var(--glow);
+        }
+
+        .cert-card.special {
+            border-color: var(--amber);
+            background: linear-gradient(135deg, rgba(255, 176, 0, 0.08), rgba(0, 255, 65, 0.05));
+        }
+
+        .cert-card.special:hover {
+            border-color: var(--amber);
+            box-shadow: var(--glow-amber);
+        }
+
+        .cert-badge {
+            position: absolute;
+            top: 20px; right: 20px;
+            background: var(--amber);
+            color: var(--bg);
+            padding: 5px 15px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+
+        .cert-card.special .cert-badge {
+            background: var(--green);
+            animation: badgePulse 2s infinite;
+        }
+
+        @keyframes badgePulse {
+            0%, 100% { box-shadow: 0 0 5px var(--green); }
+            50% { box-shadow: 0 0 20px var(--green); }
+        }
+
+        .cert-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.3rem;
+            color: var(--green);
+            margin-bottom: 15px;
+            letter-spacing: 1px;
+            max-width: 70%;
+        }
+
+        .cert-issuers {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .cert-issuer {
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px solid var(--border);
+            padding: 4px 10px;
+            font-size: 0.75rem;
+            color: var(--green);
+        }
+
+        .cert-desc {
+            color: var(--text-dim);
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .cert-action {
+            color: var(--amber);
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .cert-action::before {
+            content: '→';
+            transition: transform 0.3s;
+        }
+
+        .cert-card:hover .cert-action::before {
+            transform: translateX(5px);
+        }
+
+        /* VERIFICATION CODE */
+        .verify-code {
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid var(--amber);
+            padding: 15px;
+            margin: 15px 0;
+            text-align: center;
+        }
+
+        .verify-label {
+            color: var(--amber);
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+        }
+
+        .verify-digits {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .verify-digit {
+            width: 35px; height: 45px;
+            background: rgba(255, 176, 0, 0.1);
+            border: 1px solid var(--amber);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: var(--amber);
+            text-shadow: 0 0 5px var(--amber);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .verify-digit:hover {
+            background: rgba(255, 176, 0, 0.3);
+            transform: scale(1.1);
+        }
+
+        .cert-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .cert-btn {
+            flex: 1;
+            min-width: 180px;
+            padding: 12px 20px;
+            background: transparent;
+            border: 1px solid var(--green);
+            color: var(--green);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.85rem;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .cert-btn:hover {
+            background: var(--green);
+            color: var(--bg);
+            box-shadow: var(--glow);
+        }
+
+        .cert-btn.alt {
+            border-color: var(--amber);
+            color: var(--amber);
+        }
+
+        .cert-btn.alt:hover {
+            background: var(--amber);
+            color: var(--bg);
+            box-shadow: var(--glow-amber);
+        }
+
+        /* EDUCATION */
+        .edu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 25px;
+        }
+
+        .edu-card {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border);
+            padding: 20px;
+            position: relative;
+        }
+
+        .edu-card.active {
+            border-color: var(--green);
+        }
+
+        .edu-card.active::before {
+            content: '● EN CURSO';
+            position: absolute;
+            top: 15px; right: 15px;
+            background: var(--green);
+            color: var(--bg);
+            padding: 3px 10px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+            animation: ledBlink 1.5s infinite;
+        }
+
+        .edu-icon {
+            font-size: 1.8rem;
+            color: var(--green);
+            margin-bottom: 15px;
+            text-shadow: var(--glow);
+        }
+
+        .edu-card h4 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            color: var(--green);
+            margin-bottom: 15px;
+            letter-spacing: 1px;
+        }
+
+        .edu-details p {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+        }
+
+        .edu-details i {
+            color: var(--amber);
+            width: 15px;
+        }
+
+        .edu-progress { margin-top: 15px; }
+
+        .edu-progress-label {
+            display: flex;
+            justify-content: space-between;
+            color: var(--amber);
+            font-size: 0.8rem;
+            margin-bottom: 5px;
+        }
+
+        .edu-progress-bar {
+            height: 8px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid var(--green-dim);
+            overflow: hidden;
+        }
+
+        .edu-progress-fill {
+            height: 100%;
+            background: repeating-linear-gradient(45deg, var(--green) 0px, var(--green) 5px, var(--green-dim) 5px, var(--green-dim) 10px);
+        }
+
+        /* ===== TOOLS ===== */
+        .tools-categories {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .tool-category {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            padding: 20px;
+        }
+
+        .tool-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .tool-item {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border);
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tool-item:hover {
+            border-color: var(--green);
+            transform: translateY(-3px);
+            box-shadow: var(--glow);
+        }
+
+        .tool-icon {
+            font-size: 1.8rem;
+            color: var(--green);
+            margin-bottom: 10px;
+            text-shadow: var(--glow);
+        }
+
+        .tool-item h4 {
+            color: var(--green);
+            font-size: 0.95rem;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+
+        .tool-item p {
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            line-height: 1.4;
+            margin-bottom: 10px;
+        }
+
+        .tool-level {
+            display: inline-block;
+            background: rgba(255, 176, 0, 0.1);
+            border: 1px solid var(--amber);
+            color: var(--amber);
+            padding: 2px 10px;
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+        }
+
+        /* ===== SIDEBAR ===== */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        @media (max-width: 1024px) {
+            .main-layout { grid-template-columns: 1fr; }
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .side-panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            padding: 20px;
+            position: relative;
+        }
+
+        .side-panel::before {
+            content: attr(data-title);
+            position: absolute;
+            top: -10px; left: 15px;
+            background: var(--bg);
+            padding: 0 8px;
+            color: var(--amber);
+            font-size: 0.7rem;
+            letter-spacing: 2px;
+        }
+
+        .side-panel h3 {
+            color: var(--green);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.95rem;
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px dashed var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .side-panel h3 i { color: var(--amber); }
+
+        .availability-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .avail-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .avail-item:hover {
+            border-color: var(--green);
+            transform: translateX(3px);
+        }
+
+        .avail-item.primary {
+            border-color: var(--green);
+            background: rgba(0, 255, 65, 0.05);
+        }
+
+        .avail-item i {
+            color: var(--green);
+            width: 20px;
+            text-align: center;
+        }
+
+        .avail-item.primary i { color: var(--amber); }
+
+        .avail-info h4 {
+            color: var(--green);
+            font-size: 0.9rem;
+            margin-bottom: 2px;
+        }
+
+        .avail-info p {
+            color: var(--text-dim);
+            font-size: 0.75rem;
+        }
+
+        /* CONTACT */
+        .contact-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .contact-item:hover {
+            border-color: var(--amber);
+            transform: translateX(3px);
+        }
+
+        .contact-item i {
+            color: var(--amber);
+            width: 18px;
+            text-align: center;
+        }
+
+        .contact-item .fa-whatsapp { color: #25D366; }
+
+        .contact-item span {
+            color: var(--text);
+            word-break: break-all;
+        }
+
+        /* ACTION BUTTONS */
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .action-btn {
+            padding: 12px;
+            background: transparent;
+            border: 1px solid var(--green);
+            color: var(--green);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.85rem;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-transform: uppercase;
+        }
+
+        .action-btn:hover {
+            background: var(--green);
+            color: var(--bg);
+            box-shadow: var(--glow);
+        }
+
+        .action-btn.primary {
+            background: var(--green);
+            color: var(--bg);
+            font-weight: bold;
+        }
+
+        .action-btn.primary:hover {
+            background: var(--amber);
+            border-color: var(--amber);
+            box-shadow: var(--glow-amber);
+        }
+
+        .action-btn.whatsapp {
+            border-color: #25D366;
+            color: #25D366;
+        }
+
+        .action-btn.whatsapp:hover {
+            background: #25D366;
+            color: var(--bg);
+        }
+
+        /* ===== FOOTER ===== */
+        .footer {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        .footer-brand {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .footer-logo {
+            width: 50px; height: 50px;
+            background: var(--green);
+            color: var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 900;
+            font-size: 1.2rem;
+            box-shadow: var(--glow);
+        }
+
+        .footer-text h3 {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--green);
+            font-size: 1rem;
+            letter-spacing: 2px;
+        }
+
+        .footer-text p {
+            color: var(--text-dim);
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+        }
+
+        .footer-status {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            font-size: 0.8rem;
+        }
+
+        .status-dot {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-dim);
+        }
+
+        .status-dot .led {
+            width: 8px; height: 8px;
+        }
+
+        /* ===== MODAL ===== */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 10000;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: var(--bg);
+            border: 2px solid var(--green);
+            margin: 5% auto;
+            padding: 30px;
+            width: 90%;
+            max-width: 550px;
+            position: relative;
+            box-shadow: var(--glow);
+            animation: modalIn 0.3s ease;
+        }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px; right: 15px;
+            width: 30px; height: 30px;
+            background: transparent;
+            border: 1px solid var(--green);
+            color: var(--green);
+            cursor: pointer;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover {
+            background: var(--green);
+            color: var(--bg);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px dashed var(--border);
+            margin-bottom: 20px;
+        }
+
+        .modal-header i {
+            font-size: 2.5rem;
+            color: var(--green);
+            text-shadow: var(--glow);
+        }
+
+        .modal-header h2 {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--green);
+            font-size: 1.3rem;
+            letter-spacing: 2px;
+        }
+
+        .modal-body p {
+            color: var(--text);
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .modal-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .modal-stat {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border);
+            padding: 12px;
+            text-align: center;
+        }
+
+        .modal-stat h4 {
+            color: var(--amber);
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .modal-stat p {
+            color: var(--green);
+            font-size: 0.95rem;
+            font-weight: bold;
+            margin: 0;
+        }
+
+        .modal-skills h4 {
+            color: var(--amber);
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+
+        .modal-skills-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .modal-skills-list span {
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px solid var(--border);
+            color: var(--green);
+            padding: 4px 10px;
+            font-size: 0.8rem;
+        }
+
+        /* ===== NOTIFICATION ===== */
+        .notification {
+            position: fixed;
+            top: 20px; right: 20px;
+            background: var(--bg);
+            border: 1px solid var(--green);
+            color: var(--green);
+            padding: 12px 20px;
+            font-family: 'Share Tech Mono', monospace;
+            letter-spacing: 1px;
+            z-index: 10001;
+            box-shadow: var(--glow);
+            animation: notifIn 0.3s ease, notifOut 0.3s ease 2.7s forwards;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .notification.warn { border-color: var(--amber); color: var(--amber); }
+        .notification.err { border-color: var(--red); color: var(--red); }
+
+        @keyframes notifIn {
+            from { transform: translateX(120%); }
+            to { transform: translateX(0); }
+        }
+
+        @keyframes notifOut {
+            to { transform: translateX(120%); opacity: 0; }
+        }
+
+        /* ===== PRINT ===== */
+        @media print {
+            .scanlines, .vignette, .chromatic, .iso-grid, .data-stream,
+            #boot-screen, .modal, .notification,
+            .tabs-nav, .dossier-crosshair, .dossier-crosshair-circle,
+            .dossier-side-text, .dossier-barcode, .dossier-leds { 
+                display: none !important; 
+            }
+
+            body {
+                background: white !important;
+                color: black !important;
+                cursor: default;
+            }
+
+            .main-container { padding: 0 !important; }
+
+            .header, .tabs-content, .side-panel, .footer,
+            .skill-card, .cert-card, .edu-card, .tool-item, .soft-item, .tool-category,
+            .operator-dossier {
+                background: white !important;
+                color: black !important;
+                border: 1px solid #333 !important;
+                box-shadow: none !important;
+                break-inside: avoid;
+                clip-path: none !important;
+            }
+
+            .operator-dossier {
+                width: 200px !important;
+                height: auto !important;
+                padding: 10px !important;
+            }
+
+            .dossier-photo-wrap {
+                height: 200px !important;
+            }
+
+            .dossier-photo-wrap::before,
+            .dossier-photo-wrap::after {
+                display: none !important;
+            }
+
+            .dossier-photo {
+                filter: none !important;
+                animation: none !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .dossier-header, .dossier-footer, .dossier-status {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .tab-pane { display: block !important; margin-bottom: 20px; }
+
+            .profile-name, .skill-title h3, .cert-title, .edu-card h4,
+            .tool-item h4, .soft-content h4, .side-panel h3, .footer-text h3 {
+                color: black !important;
+                text-shadow: none !important;
+            }
+
+            .profile-tag, .skill-tag, .cert-issuer, .tool-level, .modal-stat p,
+            .status-value, .cert-action, .section-title, .progress-header,
+            .edu-progress-label, .avail-info h4 {
+                color: #333 !important;
+            }
+
+            .skill-desc, .cert-desc, .soft-content p, .tool-item p, .avail-info p,
+            .contact-item span, .footer-text p, .status-dot, .profile-label {
+                color: #555 !important;
+            }
+
+            .action-btn, .cert-btn {
+                border: 1px solid black !important;
+                color: black !important;
+                background: white !important;
+            }
+
+            .progress-fill, .edu-progress-fill {
+                background: #333 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 900px) {
+            .header-grid { grid-template-columns: 1fr; text-align: center; }
+            .operator-dossier { margin: 0 auto; }
+            .profile-name { font-size: 2rem; }
+            .status-panel { flex-direction: row; flex-wrap: wrap; justify-content: center; }
+            .data-stream { display: none; }
+        }
+
+        @media (max-width: 600px) {
+            .main-container { padding: 15px; }
+            .profile-name { font-size: 1.5rem; }
+            .tabs-content { padding: 20px; }
+            .modal-stats { grid-template-columns: 1fr; }
+            .operator-dossier { width: 220px; height: 280px; }
+            .dossier-photo-wrap { height: 180px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- BOOT SEQUENCE -->
+    <div id="boot-screen">
+        <div id="boot-content"></div>
+    </div>
+
+    <!-- EFECTOS DE FONDO -->
+    <div class="iso-grid"></div>
+    <div class="data-stream left"><div class="data-stream-inner" id="stream-left"></div></div>
+    <div class="data-stream right"><div class="data-stream-inner" id="stream-right"></div></div>
+    <div class="scanlines"></div>
+    <div class="vignette"></div>
+    <div class="chromatic"></div>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <div class="main-container">
+        <!-- HEADER -->
+        <header class="header">
+            <div class="header-grid">
+                <!-- OPERATOR DOSSIER - FOTO HUD -->
+                <div class="operator-dossier">
+                    <!-- Esquinas tipo brackets -->
+                    <div class="dossier-corner tl"></div>
+                    <div class="dossier-corner tr"></div>
+                    <div class="dossier-corner bl"></div>
+                    <div class="dossier-corner br"></div>
+
+                    <!-- Header del dossier -->
+                    <div class="dossier-header">◆ OPERATOR DOSSIER ◆</div>
+
+                    <!-- Texto lateral rotado -->
+                    <div class="dossier-side-text left">CLASSIFIED // ID-0046</div>
+                    <div class="dossier-side-text right">CLEARANCE: ALPHA</div>
+
+                    <!-- LEDs indicadores -->
+                    <div class="dossier-leds">
+                        <div class="dossier-led"></div>
+                        <div class="dossier-led amber"></div>
+                        <div class="dossier-led"></div>
+                    </div>
+
+                    <!-- Status badge -->
+                    <div class="dossier-status">● ACTIVE</div>
+
+                    <!-- Contenedor de la foto -->
+                    <div class="dossier-photo-wrap">
+                        <img src="riki.png" alt="R. Medina" class="dossier-photo">
+                        
+                        <!-- Crosshairs -->
+                        <div class="dossier-crosshair"></div>
+                        <div class="dossier-crosshair-circle"></div>
+                    </div>
+
+                    <!-- Datos biométricos -->
+                    <div class="dossier-bio">
+                        <div class="dossier-bio-row">
+                            <span class="label">ID:</span>
+                            <span class="value">RM-0046-AR</span>
+                        </div>
+                        <div class="dossier-bio-row">
+                            <span class="label">STATUS:</span>
+                            <span class="value">OPERATIONAL</span>
+                        </div>
+                        <div class="dossier-bio-row">
+                            <span class="label">ROLE:</span>
+                            <span class="value">JAVA DEV</span>
+                        </div>
+
+                        <!-- Barcode decorativo -->
+                        <div class="dossier-barcode">
+                            <span></span><span></span><span></span><span></span>
+                            <span></span><span></span><span></span><span></span>
+                            <span></span><span></span><span></span><span></span>
+                            <span></span><span></span><span></span><span></span>
+                            <span></span><span></span><span></span><span></span>
+                        </div>
+                    </div>
+
+                    <!-- Footer del dossier -->
+                    <div class="dossier-footer">SECURE ACCESS // VERIFIED</div>
+                </div>
+
+                <!-- PROFILE -->
+                <div class="profile-info">
+                    <div class="profile-label">▸ IDENTIDAD REGISTRADA // NIVEL DE ACCESO: OPERADOR</div>
+                    <h1 class="profile-name" id="typed-name"></h1>
+                    <div class="profile-tags">
+                        <span class="profile-tag">JAVA DEVELOPER JR</span>
+                        <span class="profile-tag">WEB DEVELOPER</span>
+                        <span class="profile-tag">SQL SPECIALIST</span>
+                        <span class="profile-tag">DISEÑO GRÁFICO</span>
+                    </div>
+                    <div class="progress-industrial">
+                        <div class="progress-header">
+                            <span>▶ CARRERA: ANÁLISIS DE SISTEMAS</span>
+                            <span>62.5% COMPLETADO</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STATUS -->
+                <div class="status-panel">
+                    <div class="status-item">
+                        <div class="led"></div>
+                        <div>
+                            <div class="status-label">EDAD</div>
+                            <div class="status-value">46 AÑOS</div>
+                        </div>
+                    </div>
+                    <div class="status-item">
+                        <div class="led amber"></div>
+                        <div>
+                            <div class="status-label">ESTADO</div>
+                            <div class="status-value">DISPONIBLE</div>
+                        </div>
+                    </div>
+                    <div class="status-item">
+                        <div class="led"></div>
+                        <div>
+                            <div class="status-label">MODALIDAD</div>
+                            <div class="status-value">FULL TIME</div>
+                        </div>
+                    </div>
+                    <div class="status-item">
+                        <div class="led"></div>
+                        <div>
+                            <div class="status-label">UBICACIÓN</div>
+                            <div class="status-value">CABA, AR</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- TABS -->
+        <nav class="tabs-nav">
+            <button class="tab-btn active" data-tab="skills">[ SKILLS_MODULE ]</button>
+            <button class="tab-btn" data-tab="certifications">[ CERTIFICATIONS ]</button>
+            <button class="tab-btn" data-tab="tools">[ TOOLS_LOADOUT ]</button>
+        </nav>
+
+        <!-- LAYOUT -->
+        <div class="main-layout">
+            <div class="tabs-content">
+                <!-- SKILLS -->
+                <section id="skills" class="tab-pane active">
+                    <div class="skills-grid">
+                        <div class="skill-card" data-tool="java">
+                            <div class="skill-header">
+                                <div class="skill-icon-box"><i class="fab fa-java"></i></div>
+                                <div class="skill-title">
+                                    <h3>JAVA DEVELOPER JR</h3>
+                                    <span class="level">NIVEL: INTERMEDIO</span>
+                                </div>
+                                <div class="skill-gauge" data-percent="70">
+                                    <svg width="60" height="60">
+                                        <circle class="bg" cx="30" cy="30" r="25"></circle>
+                                        <circle class="fg" cx="30" cy="30" r="25" stroke-dasharray="157" stroke-dashoffset="47"></circle>
+                                    </svg>
+                                    <span class="value">70%</span>
+                                </div>
+                            </div>
+                            <p class="skill-desc">Desarrollo backend con Programación Orientada a Objetos. Aplicaciones robustas con Spring Boot y APIs REST.</p>
+                            <div class="skill-tags">
+                                <span class="skill-tag">POO</span>
+                                <span class="skill-tag">SPRING BOOT</span>
+                                <span class="skill-tag">REST API</span>
+                                <span class="skill-tag">MAVEN</span>
+                                <span class="skill-tag">GIT</span>
+                            </div>
+                        </div>
+
+                        <div class="skill-card" data-tool="sql">
+                            <div class="skill-header">
+                                <div class="skill-icon-box"><i class="fas fa-database"></i></div>
+                                <div class="skill-title">
+                                    <h3>SQL DATABASES</h3>
+                                    <span class="level">NIVEL: AVANZADO</span>
+                                </div>
+                                <div class="skill-gauge" data-percent="85">
+                                    <svg width="60" height="60">
+                                        <circle class="bg" cx="30" cy="30" r="25"></circle>
+                                        <circle class="fg" cx="30" cy="30" r="25" stroke-dasharray="157" stroke-dashoffset="23"></circle>
+                                    </svg>
+                                    <span class="value">85%</span>
+                                </div>
+                            </div>
+                            <p class="skill-desc">Bases de datos relacionales. Diseño de esquemas, consultas complejas, optimización y normalización.</p>
+                            <div class="skill-tags">
+                                <span class="skill-tag">SQL SERVER</span>
+                                <span class="skill-tag">MYSQL</span>
+                                <span class="skill-tag">OPTIMIZACIÓN</span>
+                                <span class="skill-tag">NORMALIZACIÓN</span>
+                            </div>
+                        </div>
+
+                        <div class="skill-card" data-tool="web">
+                            <div class="skill-header">
+                                <div class="skill-icon-box"><i class="fas fa-globe"></i></div>
+                                <div class="skill-title">
+                                    <h3>WEB DEVELOPMENT</h3>
+                                    <span class="level">NIVEL: FULL STACK</span>
+                                </div>
+                                <div class="skill-gauge" data-percent="80">
+                                    <svg width="60" height="60">
+                                        <circle class="bg" cx="30" cy="30" r="25"></circle>
+                                        <circle class="fg" cx="30" cy="30" r="25" stroke-dasharray="157" stroke-dashoffset="31"></circle>
+                                    </svg>
+                                    <span class="value">80%</span>
+                                </div>
+                            </div>
+                            <p class="skill-desc">Desarrollo web completo frontend/backend. HTML5, CSS3, JavaScript, PHP y diseño responsivo.</p>
+                            <div class="skill-tags">
+                                <span class="skill-tag">HTML5/CSS3</span>
+                                <span class="skill-tag">JAVASCRIPT</span>
+                                <span class="skill-tag">PHP</span>
+                                <span class="skill-tag">BOOTSTRAP</span>
+                            </div>
+                        </div>
+
+                        <div class="skill-card" data-tool="design">
+                            <div class="skill-header">
+                                <div class="skill-icon-box"><i class="fas fa-paint-brush"></i></div>
+                                <div class="skill-title">
+                                    <h3>DISEÑO GRÁFICO</h3>
+                                    <span class="level">NIVEL: EXPERTO</span>
+                                </div>
+                                <div class="skill-gauge" data-percent="90">
+                                    <svg width="60" height="60">
+                                        <circle class="bg" cx="30" cy="30" r="25"></circle>
+                                        <circle class="fg" cx="30" cy="30" r="25" stroke-dasharray="157" stroke-dashoffset="15"></circle>
+                                    </svg>
+                                    <span class="value">90%</span>
+                                </div>
+                            </div>
+                            <p class="skill-desc">Creación y edición de contenido gráfico digital. Adobe Creative Suite y CorelDRAW para diseño profesional.</p>
+                            <div class="skill-tags">
+                                <span class="skill-tag">PHOTOSHOP</span>
+                                <span class="skill-tag">ILLUSTRATOR</span>
+                                <span class="skill-tag">CORELDRAW</span>
+                                <span class="skill-tag">BRANDING</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="soft-skills">
+                        <h3 class="section-title">HABILIDADES BLANDAS // SOFT_SKILLS</h3>
+                        <div class="soft-grid">
+                            <div class="soft-item" data-softskill="comunicacion">
+                                <div class="soft-icon"><i class="fas fa-comments"></i></div>
+                                <div class="soft-content">
+                                    <h4>COMUNICACIÓN CLARA</h4>
+                                    <p>Explico conceptos técnicos de forma sencilla para diferentes audiencias.</p>
+                                </div>
+                            </div>
+                            <div class="soft-item" data-softskill="resolucion">
+                                <div class="soft-icon"><i class="fas fa-puzzle-piece"></i></div>
+                                <div class="soft-content">
+                                    <h4>RESOLUCIÓN DE PROBLEMAS</h4>
+                                    <p>Enfoque analítico para identificar y resolver problemas complejos.</p>
+                                </div>
+                            </div>
+                            <div class="soft-item" data-softskill="equipo">
+                                <div class="soft-icon"><i class="fas fa-users"></i></div>
+                                <div class="soft-content">
+                                    <h4>TRABAJO EN EQUIPO</h4>
+                                    <p>Colaboración efectiva en grupos multidisciplinarios.</p>
+                                </div>
+                            </div>
+                            <div class="soft-item" data-softskill="adaptabilidad">
+                                <div class="soft-icon"><i class="fas fa-sync-alt"></i></div>
+                                <div class="soft-content">
+                                    <h4>ADAPTABILIDAD</h4>
+                                    <p>Flexibilidad para aprender nuevas tecnologías rápidamente.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- CERTIFICATIONS -->
+                <section id="certifications" class="tab-pane">
+                    <div class="cert-list">
+                        <div class="cert-card" id="certIA">
+                            <div class="cert-badge">NUEVA CERT</div>
+                            <h3 class="cert-title">INTELIGENCIA ARTIFICIAL Y APLICACIONES EN ENTORNOS DIGITALES</h3>
+                            <div class="cert-issuers">
+                                <span class="cert-issuer">GOBIERNO CABA</span>
+                                <span class="cert-issuer">EDUCACIÓN DIGITAL</span>
+                            </div>
+                            <p class="cert-desc">Curso especializado en fundamentos de IA, machine learning y aplicación práctica en entornos digitales modernos.</p>
+                            <div class="cert-action">VER CREDENCIAL DIGITAL</div>
+                        </div>
+
+                        <div class="cert-card special" id="javaCert">
+                            <div class="cert-badge">INTERNACIONAL</div>
+                            <h3 class="cert-title">JAVA PROGRAMMING COURSE FOR BEGINNERS</h3>
+                            <div class="cert-issuers">
+                                <span class="cert-issuer">SCHOLARHAT</span>
+                                <span class="cert-issuer">CERT. INTERNACIONAL</span>
+                                <span class="cert-issuer">09 ENERO 2026</span>
+                            </div>
+                            <p class="cert-desc">Curso internacional completo de Java. Fundamentos sólidos, POO, estructuras de datos y desarrollo backend.</p>
+
+                            <div class="verify-code">
+                                <div class="verify-label">▶ CÓDIGO DE VERIFICACIÓN</div>
+                                <div class="verify-digits">
+                                    <div class="verify-digit">J</div>
+                                    <div class="verify-digit">U</div>
+                                    <div class="verify-digit">7</div>
+                                    <div class="verify-digit">E</div>
+                                    <div class="verify-digit">0</div>
+                                    <div class="verify-digit">9</div>
+                                    <div class="verify-digit">0</div>
+                                    <div class="verify-digit">1</div>
+                                    <div class="verify-digit">2</div>
+                                    <div class="verify-digit">6</div>
+                                </div>
+                                <div class="verify-label">ID: JU7E090126</div>
+                            </div>
+
+                            <div class="cert-buttons">
+                                <button class="cert-btn" id="verifyJava"><i class="fas fa-shield-alt"></i> VERIFICAR ONLINE</button>
+                                <button class="cert-btn alt" id="viewJava"><i class="fas fa-eye"></i> VER PDF</button>
+                            </div>
+                        </div>
+
+                        <div class="cert-card" id="certAdmin">
+                            <div class="cert-badge">OFICIAL</div>
+                            <h3 class="cert-title">AUXILIAR ADMINISTRATIVO</h3>
+                            <div class="cert-issuers">
+                                <span class="cert-issuer">GOBIERNO CABA</span>
+                                <span class="cert-issuer">UBA</span>
+                                <span class="cert-issuer">MIN. EDUCACIÓN</span>
+                            </div>
+                            <p class="cert-desc">Certificación oficial en gestión administrativa, atención al público y procedimientos estandarizados.</p>
+                            <div class="cert-action">VER CERTIFICADO DIGITAL</div>
+                        </div>
+
+                        <h3 class="section-title">FORMACIÓN ACADÉMICA // EDUCATION_LOG</h3>
+
+                        <div class="edu-grid">
+                            <div class="edu-card active">
+                                <div class="edu-icon"><i class="fas fa-laptop-code"></i></div>
+                                <h4>TECNICATURA SUPERIOR EN ANÁLISIS DE SISTEMAS</h4>
+                                <div class="edu-details">
+                                    <p><i class="fas fa-university"></i> IFTS N°21</p>
+                                    <p><i class="fas fa-clock"></i> Turno Noche (18-22hs)</p>
+                                    <p><i class="fas fa-calendar"></i> 2024 - 2025</p>
+                                </div>
+                                <div class="edu-progress">
+                                    <div class="edu-progress-label">
+                                        <span>PROGRESO</span>
+                                        <span>62.5%</span>
+                                    </div>
+                                    <div class="edu-progress-bar">
+                                        <div class="edu-progress-fill" style="width: 62.5%"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="edu-card active">
+                                <div class="edu-icon"><i class="fas fa-shopping-cart"></i></div>
+                                <h4>TÉCNICAS DE VENTAS Y COMERCIALIZACIÓN</h4>
+                                <div class="edu-details">
+                                    <p><i class="fas fa-university"></i> Avalado por GCBA</p>
+                                    <p><i class="fas fa-clock"></i> 120 horas cátedra</p>
+                                    <p><i class="fas fa-calendar"></i> 2024</p>
+                                </div>
+                                <div class="edu-progress">
+                                    <div class="edu-progress-label">
+                                        <span>PROGRESO</span>
+                                        <span>70%</span>
+                                    </div>
+                                    <div class="edu-progress-bar">
+                                        <div class="edu-progress-fill" style="width: 70%"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="edu-card active">
+                                <div class="edu-icon"><i class="fas fa-file-excel"></i></div>
+                                <h4>MICROSOFT OFFICE AVANZADO</h4>
+                                <div class="edu-details">
+                                    <p><i class="fas fa-university"></i> Avalado por GCBA</p>
+                                    <p><i class="fas fa-clock"></i> 80 horas cátedra</p>
+                                    <p><i class="fas fa-calendar"></i> 2024</p>
+                                </div>
+                                <div class="edu-progress">
+                                    <div class="edu-progress-label">
+                                        <span>PROGRESO</span>
+                                        <span>85%</span>
+                                    </div>
+                                    <div class="edu-progress-bar">
+                                        <div class="edu-progress-fill" style="width: 85%"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="edu-card">
+                                <div class="edu-icon"><i class="fas fa-user-tie"></i></div>
+                                <h4>BACHILLER EN GESTIÓN Y ADMINISTRACIÓN DE EMPRESAS</h4>
+                                <div class="edu-details">
+                                    <p><i class="fas fa-school"></i> E.E.M.N°7 Gregoria Matotoras</p>
+                                    <p><i class="fas fa-map-marker-alt"></i> Ciudadela, Buenos Aires</p>
+                                    <p><i class="fas fa-calendar"></i> 1996 - 2000</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TOOLS -->
+                <section id="tools" class="tab-pane">
+                    <div class="tools-categories">
+                        <div class="tool-category">
+                            <h3 class="section-title">ADOBE CREATIVE SUITE</h3>
+                            <div class="tool-grid">
+                                <div class="tool-item" data-tool="photoshop">
+                                    <div class="tool-icon"><i class="fab fa-adobe"></i></div>
+                                    <h4>ADOBE PHOTOSHOP</h4>
+                                    <p>Edición y retoque fotográfico profesional, diseño de interfaces.</p>
+                                    <span class="tool-level">AVANZADO</span>
+                                </div>
+                                <div class="tool-item" data-tool="illustrator">
+                                    <div class="tool-icon"><i class="fab fa-adobe"></i></div>
+                                    <h4>ADOBE ILLUSTRATOR</h4>
+                                    <p>Diseño vectorial, logotipos, ilustraciones escalables.</p>
+                                    <span class="tool-level">EXPERTO</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tool-category">
+                            <h3 class="section-title">CORELDRAW GRAPHICS</h3>
+                            <div class="tool-grid">
+                                <div class="tool-item" data-tool="coreldraw">
+                                    <div class="tool-icon"><i class="fas fa-draw-polygon"></i></div>
+                                    <h4>CORELDRAW</h4>
+                                    <p>Diseño vectorial, maquetación, diseño editorial e impresión.</p>
+                                    <span class="tool-level">EXPERTO</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tool-category">
+                            <h3 class="section-title">MICROSOFT OFFICE</h3>
+                            <div class="tool-grid">
+                                <div class="tool-item" data-tool="word">
+                                    <div class="tool-icon"><i class="fas fa-file-word"></i></div>
+                                    <h4>MICROSOFT WORD</h4>
+                                    <p>Procesamiento de texto profesional y documentos complejos.</p>
+                                    <span class="tool-level">EXPERTO</span>
+                                </div>
+                                <div class="tool-item" data-tool="excel">
+                                    <div class="tool-icon"><i class="fas fa-file-excel"></i></div>
+                                    <h4>MICROSOFT EXCEL</h4>
+                                    <p>Hojas de cálculo avanzadas, tablas dinámicas y análisis.</p>
+                                    <span class="tool-level">AVANZADO</span>
+                                </div>
+                                <div class="tool-item" data-tool="powerpoint">
+                                    <div class="tool-icon"><i class="fas fa-file-powerpoint"></i></div>
+                                    <h4>MICROSOFT POWERPOINT</h4>
+                                    <p>Presentaciones profesionales con animaciones y multimedia.</p>
+                                    <span class="tool-level">AVANZADO</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tool-category">
+                            <h3 class="section-title">EDICIÓN MULTIMEDIA</h3>
+                            <div class="tool-grid">
+                                <div class="tool-item" data-tool="video">
+                                    <div class="tool-icon"><i class="fas fa-video"></i></div>
+                                    <h4>EDICIÓN DE VIDEO</h4>
+                                    <p>Montaje, postproducción, efectos visuales y color.</p>
+                                    <span class="tool-level">INTERMEDIO</span>
+                                </div>
+                                <div class="tool-item" data-tool="audio">
+                                    <div class="tool-icon"><i class="fas fa-music"></i></div>
+                                    <h4>EDICIÓN DE AUDIO</h4>
+                                    <p>Mezcla, masterización, efectos y limpieza de audio.</p>
+                                    <span class="tool-level">INTERMEDIO</span>
+                                </div>
+                                <div class="tool-item" data-tool="pdf">
+                                    <div class="tool-icon"><i class="fas fa-file-pdf"></i></div>
+                                    <h4>EDICIÓN DE PDF</h4>
+                                    <p>Manipulación, conversión, optimización y formularios.</p>
+                                    <span class="tool-level">AVANZADO</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- SIDEBAR -->
+            <aside class="sidebar">
+                <div class="side-panel" data-title="◆ DISPONIBILIDAD">
+                    <h3><i class="fas fa-bolt"></i> STATUS_OPERATIVO</h3>
+                    <div class="availability-list">
+                        <div class="avail-item primary">
+                            <i class="fas fa-check-circle"></i>
+                            <div class="avail-info">
+                                <h4>FULL TIME</h4>
+                                <p>Disponibilidad inmediata</p>
+                            </div>
+                        </div>
+                        <div class="avail-item">
+                            <i class="fas fa-building"></i>
+                            <div class="avail-info">
+                                <h4>PRESENCIAL</h4>
+                                <p>7:00 - 18:00 hs en CABA</p>
+                            </div>
+                        </div>
+                        <div class="avail-item">
+                            <i class="fas fa-home"></i>
+                            <div class="avail-info">
+                                <h4>HOME OFFICE</h4>
+                                <p>100% Remoto</p>
+                            </div>
+                        </div>
+                        <div class="avail-item">
+                            <i class="fas fa-sync-alt"></i>
+                            <div class="avail-info">
+                                <h4>HÍBRIDO</h4>
+                                <p>Modalidad flexible</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="side-panel" data-title="◆ CONTACTO">
+                    <h3><i class="fas fa-id-card"></i> COMM_CHANNEL</h3>
+                    <div class="contact-list">
+                        <div class="contact-item" id="contactWhatsapp">
+                            <i class="fab fa-whatsapp"></i>
+                            <span>11-3892-7021</span>
+                        </div>
+                        <div class="contact-item" id="contactEmail">
+                            <i class="fas fa-envelope"></i>
+                            <span>ricardomedina1980@gmail.com</span>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>Monte Castro, CABA</span>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-language"></i>
+                            <span>Inglés Básico Técnico</span>
+                        </div>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button class="action-btn primary" id="btnContact"><i class="fas fa-rocket"></i> CONTACTAR</button>
+                        <button class="action-btn whatsapp" id="btnWhatsapp"><i class="fab fa-whatsapp"></i> WHATSAPP</button>
+                        <button class="action-btn" id="btnCV"><i class="fas fa-download"></i> CV PDF</button>
+                    </div>
+                </div>
+            </aside>
+        </div>
+
+        <!-- FOOTER -->
+        <footer class="footer">
+            <div class="footer-brand">
+                <div class="footer-logo">RM</div>
+                <div class="footer-text">
+                    <h3>RICARDO MEDINA</h3>
+                    <p>JAVA DEV // WEB DEV // SQL // DISEÑO GRÁFICO</p>
+                </div>
+            </div>
+            <div class="footer-status">
+                <span class="status-dot"><span class="led"></span> SYSTEM ONLINE</span>
+                <span class="status-dot"><span class="led amber"></span> 46 AÑOS</span>
+                <span class="status-dot" id="footerDate"><span class="led"></span> ---</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- MODAL -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close">&times;</button>
+            <div class="modal-header">
+                <i id="modalIcon" class="fab fa-java"></i>
+                <h2 id="modalTitle">TÍTULO</h2>
+            </div>
+            <div class="modal-body">
+                <p id="modalDesc">Descripción...</p>
+                <div class="modal-stats">
+                    <div class="modal-stat">
+                        <h4><i class="fas fa-chart-line"></i> NIVEL</h4>
+                        <p id="modalLevel">-</p>
+                    </div>
+                    <div class="modal-stat">
+                        <h4><i class="fas fa-clock"></i> EXPERIENCIA</h4>
+                        <p id="modalExp">-</p>
+                    </div>
+                    <div class="modal-stat">
+                        <h4><i class="fas fa-tasks"></i> PROYECTOS</h4>
+                        <p id="modalProjects">-</p>
+                    </div>
+                </div>
+                <div class="modal-skills">
+                    <h4>▶ HABILIDADES ESPECÍFICAS</h4>
+                    <div id="modalSkills" class="modal-skills-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== DATOS =====
+        const toolData = {
+            java: { title: "JAVA DEVELOPER JR", icon: "fab fa-java", desc: "Desarrollo en Java con Programación Orientada a Objetos. Aplicaciones backend robustas con Spring Boot y APIs REST.", level: "INTERMEDIO", exp: "2 AÑOS", projects: "+5", skills: ["POO", "Spring Boot", "REST APIs", "Maven/Gradle", "Estructuras de Datos", "Patrones de Diseño", "Git", "MySQL", "JUnit"] },
+            sql: { title: "SQL DATABASES", icon: "fas fa-database", desc: "Manejo experto de bases de datos relacionales. Diseño de esquemas, consultas complejas, optimización y normalización.", level: "AVANZADO", exp: "3 AÑOS", projects: "+10 DBs", skills: ["SQL Server", "MySQL", "Consultas Avanzadas", "Optimización", "Normalización", "Transacciones", "Stored Procedures", "Índices"] },
+            web: { title: "WEB DEVELOPMENT", icon: "fas fa-globe", desc: "Desarrollo web completo frontend/backend. Experiencias responsivas e interactivas con HTML5, CSS3, JavaScript y PHP.", level: "AVANZADO", exp: "3 AÑOS", projects: "+8 SITES", skills: ["HTML5/CSS3", "JavaScript", "PHP", "Responsive Design", "Bootstrap", "jQuery", "AJAX", "REST APIs"] },
+            design: { title: "DISEÑO GRÁFICO DIGITAL", icon: "fas fa-paint-brush", desc: "Experto en creación y edición de contenido gráfico digital. Adobe Creative Suite y CorelDRAW para diseño profesional.", level: "EXPERTO", exp: "15+ AÑOS", projects: "100+", skills: ["Photoshop", "Illustrator", "CorelDRAW", "Edición Multimedia", "Diseño Vectorial", "Branding", "Retoque Fotográfico", "Maquetación"] },
+            photoshop: { title: "ADOBE PHOTOSHOP", icon: "fab fa-adobe", desc: "Edición y retoque fotográfico profesional. Capas, máscaras, filtros y efectos especiales.", level: "AVANZADO", exp: "10+ AÑOS", projects: "50+", skills: ["Retoque Fotográfico", "Composición", "Manipulación", "Diseño UI", "Corrección de Color", "Máscaras"] },
+            illustrator: { title: "ADOBE ILLUSTRATOR", icon: "fab fa-adobe", desc: "Diseño vectorial profesional. Logotipos, ilustraciones y gráficos escalables.", level: "EXPERTO", exp: "8+ AÑOS", projects: "30+", skills: ["Diseño Vectorial", "Ilustración", "Logotipos", "Iconos", "Tipografía", "Trazados"] },
+            coreldraw: { title: "CORELDRAW", icon: "fas fa-draw-polygon", desc: "Suite de diseño gráfico vectorial. Maquetación, diseño editorial e impresión profesional.", level: "EXPERTO", exp: "12+ AÑOS", projects: "40+", skills: ["Diseño Vectorial", "Maquetación", "Editorial", "Pre-impresión", "Publicitario", "Packaging"] },
+            word: { title: "MICROSOFT WORD", icon: "fas fa-file-word", desc: "Procesador de texto profesional. Documentos complejos, estilos y colaboración.", level: "EXPERTO", exp: "20+ AÑOS", projects: "100+", skills: ["Formato Avanzado", "Plantillas", "Índices", "Combinar Correspondencia"] },
+            excel: { title: "MICROSOFT EXCEL", icon: "fas fa-file-excel", desc: "Hojas de cálculo avanzadas. Fórmulas complejas, tablas dinámicas y macros.", level: "AVANZADO", exp: "15+ AÑOS", projects: "50+", skills: ["Fórmulas", "Tablas Dinámicas", "Macros VBA", "Gráficos", "Análisis de Datos"] },
+            powerpoint: { title: "MICROSOFT POWERPOINT", icon: "fas fa-file-powerpoint", desc: "Presentaciones profesionales con animaciones y multimedia.", level: "AVANZADO", exp: "10+ AÑOS", projects: "30+", skills: ["Presentaciones", "Animaciones", "Multimedia", "Storytelling"] },
+            video: { title: "EDICIÓN DE VIDEO", icon: "fas fa-video", desc: "Montaje y postproducción audiovisual. Efectos visuales y corrección de color.", level: "INTERMEDIO", exp: "5 AÑOS", projects: "20+", skills: ["Montaje", "Efectos Visuales", "Color", "Postproducción"] },
+            audio: { title: "EDICIÓN DE AUDIO", icon: "fas fa-music", desc: "Mezcla, masterización y producción musical profesional.", level: "INTERMEDIO", exp: "4 AÑOS", projects: "15+", skills: ["Mezcla", "Masterización", "Efectos", "Limpieza de Audio"] },
+            pdf: { title: "EDICIÓN DE PDF", icon: "fas fa-file-pdf", desc: "Manipulación profesional de PDF. Creación, edición y conversión.", level: "AVANZADO", exp: "8 AÑOS", projects: "40+", skills: ["Creación", "Edición", "Conversión", "Formularios", "Firma Digital"] }
+        };
+
+        const softData = {
+            comunicacion: { title: "COMUNICACIÓN CLARA", icon: "fas fa-comments", desc: "Transmitir ideas técnicas de manera efectiva a diferentes audiencias.", level: "DESARROLLADA", exp: "LABORAL", projects: "MÚLTIPLES", skills: ["Comunicación Efectiva", "Adaptación", "Claridad", "Escucha Activa"] },
+            resolucion: { title: "RESOLUCIÓN DE PROBLEMAS", icon: "fas fa-puzzle-piece", desc: "Enfoque analítico y sistemático para resolver problemas complejos.", level: "DESARROLLADA", exp: "REAL", projects: "TÉCNICOS", skills: ["Pensamiento Analítico", "Soluciones Lógicas", "Toma de Decisiones", "Creatividad"] },
+            equipo: { title: "TRABAJO EN EQUIPO", icon: "fas fa-users", desc: "Colaboración efectiva en grupos multidisciplinarios.", level: "DESARROLLADA", exp: "EQUIPOS", projects: "GRUPALES", skills: ["Colaboración", "Coordinación", "Apoyo Mutuo", "Resolución de Conflictos"] },
+            adaptabilidad: { title: "ADAPTABILIDAD", icon: "fas fa-sync-alt", desc: "Flexibilidad para aprender nuevas tecnologías rápidamente.", level: "DESARROLLADA", exp: "CAMBIOS", projects: "MIGRACIONES", skills: ["Flexibilidad", "Aprendizaje Rápido", "Mentalidad Abierta", "Resiliencia"] }
+        };
+
+        // ===== BOOT SEQUENCE =====
+        const bootLines = [
+            { text: "BIOS v3.14 // INITIALIZING SYSTEM...", delay: 0 },
+            { text: "> CPU CHECK..................... [OK]", delay: 300, cls: "ok" },
+            { text: "> MEMORY CHECK.................. [OK]", delay: 500, cls: "ok" },
+            { text: "> LOADING PROFILE: R.MEDINA..... [OK]", delay: 700, cls: "ok" },
+            { text: "> BIOMETRIC SCAN................ [OK]", delay: 900, cls: "ok" },
+            { text: "> OPERATOR DOSSIER LOADED....... [OK]", delay: 1100, cls: "ok" },
+            { text: "> SKILLS DATABASE............... [OK]", delay: 1300, cls: "ok" },
+            { text: "> CERTIFICATIONS MODULE......... [OK]", delay: 1500, cls: "ok" },
+            { text: "> TOOLS LOADOUT................. [OK]", delay: 1700, cls: "ok" },
+            { text: "> ESTABLISHING CONNECTION.......", delay: 1900, cls: "warn" },
+            { text: "> NETWORK SECURE................ [OK]", delay: 2100, cls: "ok" },
+            { text: "> RENDERING INTERFACE...........", delay: 2300, cls: "warn" },
+            { text: "", delay: 2500 },
+            { text: "◆ SYSTEM READY // WELCOME, OPERATOR", delay: 2700, cls: "critical" }
+        ];
+
+        const bootContent = document.getElementById('boot-content');
+        bootLines.forEach((line, i) => {
+            setTimeout(() => {
+                const div = document.createElement('div');
+                div.className = 'boot-line ' + (line.cls || '');
+                div.style.animationDelay = '0s';
+                div.textContent = line.text;
+                if (i === bootLines.length - 1) {
+                    const cursor = document.createElement('span');
+                    cursor.className = 'boot-cursor';
+                    div.appendChild(cursor);
+                }
+                bootContent.appendChild(div);
+            }, line.delay);
+        });
+
+        setTimeout(() => {
+            document.getElementById('boot-screen').classList.add('hidden');
+        }, 3800);
+
+        // ===== TYPING EFFECT =====
+        const nameEl = document.getElementById('typed-name');
+        const fullName = "RICARDO MEDINA";
+        let charIndex = 0;
+
+        setTimeout(() => {
+            const cursor = document.createElement('span');
+            cursor.className = 'typing-cursor';
+            nameEl.appendChild(cursor);
+
+            const typeInterval = setInterval(() => {
+                if (charIndex < fullName.length) {
+                    nameEl.insertBefore(document.createTextNode(fullName[charIndex]), cursor);
+                    charIndex++;
+                } else {
+                    clearInterval(typeInterval);
+                }
+            }, 100);
+        }, 4100);
+
+        // ===== DATA STREAMS =====
+        function generateStream() {
+            let stream = '';
+            for (let i = 0; i < 500; i++) {
+                const r = Math.random();
+                if (r < 0.5) stream += Math.floor(Math.random() * 2);
+                else if (r < 0.8) stream += '0123456789ABCDEF'[Math.floor(Math.random() * 16)];
+                else stream += String.fromCharCode(65 + Math.floor(Math.random() * 26));
+                if (i % 2 === 1) stream += '\n';
+            }
+            return stream + stream;
+        }
+
+        document.getElementById('stream-left').textContent = generateStream();
+        document.getElementById('stream-right').textContent = generateStream();
+
+        // ===== TABS =====
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.tab).classList.add('active');
+            });
+        });
+
+        // ===== MODAL =====
+        const modal = document.getElementById('modal');
+        document.querySelector('.modal-close').addEventListener('click', () => modal.style.display = 'none');
+        window.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+
+        function openModal(data) {
+            document.getElementById('modalIcon').className = data.icon;
+            document.getElementById('modalTitle').textContent = data.title;
+            document.getElementById('modalDesc').textContent = data.desc;
+            document.getElementById('modalLevel').textContent = data.level;
+            document.getElementById('modalExp').textContent = data.exp;
+            document.getElementById('modalProjects').textContent = data.projects;
+            const skillsEl = document.getElementById('modalSkills');
+            skillsEl.innerHTML = '';
+            data.skills.forEach(s => {
+                const span = document.createElement('span');
+                span.textContent = s;
+                skillsEl.appendChild(span);
+            });
+            modal.style.display = 'block';
+        }
+
+        document.querySelectorAll('[data-tool]').forEach(el => {
+            el.addEventListener('click', () => {
+                const data = toolData[el.dataset.tool];
+                if (data) openModal(data);
+            });
+        });
+
+        document.querySelectorAll('[data-softskill]').forEach(el => {
+            el.addEventListener('click', () => {
+                const data = softData[el.dataset.softskill];
+                if (data) openModal(data);
+            });
+        });
+
+        // ===== BUTTONS =====
+        document.getElementById('btnWhatsapp').addEventListener('click', () => {
+            showNotif('▶ ABRIR WHATSAPP...', 'warn');
+            setTimeout(() => window.open('https://wa.me/541138927021', '_blank'), 500);
+        });
+
+        document.getElementById('btnContact').addEventListener('click', () => {
+            const email = 'ricardomedina1980@gmail.com';
+            navigator.clipboard.writeText(email).then(() => {
+                showNotif('✓ EMAIL COPIADO: ' + email);
+                setTimeout(() => {
+                    window.location.href = 'mailto:' + email + '?subject=Contacto desde Portafolio';
+                }, 1000);
+            });
+        });
+
+        document.getElementById('btnCV').addEventListener('click', () => {
+            showNotif('▶ PREPARANDO IMPRESIÓN PDF...', 'warn');
+            setTimeout(() => window.print(), 800);
+        });
+
+        document.getElementById('contactWhatsapp').addEventListener('click', () => {
+            navigator.clipboard.writeText('1138927021').then(() => showNotif('✓ TELÉFONO COPIADO'));
+        });
+        document.getElementById('contactEmail').addEventListener('click', () => {
+            navigator.clipboard.writeText('ricardomedina1980@gmail.com').then(() => showNotif('✓ EMAIL COPIADO'));
+        });
+
+        document.getElementById('certIA').addEventListener('click', () => {
+            showNotif('▶ ABRIR CREDENCIAL IA...', 'warn');
+            setTimeout(() => window.open('https://openbadgefactory.com/obv3/credentials/62e77a4639632a1b169e8759b5834da2ca6dd96c', '_blank'), 500);
+        });
+
+        document.getElementById('certAdmin').addEventListener('click', () => {
+            showNotif('▶ ABRIR CERTIFICADO...', 'warn');
+            setTimeout(() => window.open('https://openbadgefactory.com/v1/assertion/d5d2b16e24834bab22fb8efd303c6d22fc1b1a07', '_blank'), 500);
+        });
+
+        document.getElementById('verifyJava').addEventListener('click', (e) => {
+            e.stopPropagation();
+            showNotif('▶ VERIFICANDO CERTIFICADO...', 'warn');
+            setTimeout(() => window.open('https://www.scholarhat.com/certificate/verify', '_blank'), 500);
+        });
+
+        document.getElementById('viewJava').addEventListener('click', (e) => {
+            e.stopPropagation();
+            showNotif('▶ CARGANDO PDF...', 'warn');
+        });
+
+        document.querySelectorAll('.verify-digit').forEach(d => {
+            d.addEventListener('click', (e) => {
+                e.stopPropagation();
+                navigator.clipboard.writeText('JU7E090126').then(() => showNotif('✓ CÓDIGO COPIADO: JU7E090126'));
+            });
+        });
+
+        // ===== NOTIFICATION =====
+        function showNotif(msg, type = '') {
+            const n = document.createElement('div');
+            n.className = 'notification ' + type;
+            n.innerHTML = '<i class="fas fa-terminal"></i> ' + msg;
+            document.body.appendChild(n);
+            setTimeout(() => n.remove(), 3000);
+        }
+
+        // ===== DATE =====
+        const dateEl = document.getElementById('footerDate');
+        const now = new Date();
+        dateEl.innerHTML = '<span class="led"></span> ' + now.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
+
+        // ===== GAUGES ANIMATION =====
+        document.querySelectorAll('.skill-gauge').forEach(g => {
+            const percent = parseInt(g.dataset.percent);
+            const circle = g.querySelector('.fg');
+            const circumference = 2 * Math.PI * 25;
+            const offset = circumference - (percent / 100) * circumference;
+            circle.style.strokeDasharray = circumference;
+            circle.style.strokeDashoffset = offset;
+        });
+
+        // Welcome notification
+        setTimeout(() => showNotif('✓ SISTEMA INICIALIZADO // BIENVENIDO'), 4300);
+    </script>
+</body>
+</html>
